@@ -1,0 +1,22 @@
+{
+    "policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "iam:PassRole",
+                    "lambda:*"
+                ],
+                "Resource": "*"
+            },
+            {
+                "Effect": "Deny",
+                "Action": [
+                    "lambda:DeleteFunction"
+                ],
+                "Resource": "*"
+            }
+        ]
+    }
+}

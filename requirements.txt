@@ -1,0 +1,6 @@
+google-generativeai>=0.5.0   # Gemini SDK (free tier available)
+pydantic>=2.0
+python-dotenv
+rich                          # Beautiful CLI output
+typer                         # Clean CLI argument parsing
+pytest>=8.0

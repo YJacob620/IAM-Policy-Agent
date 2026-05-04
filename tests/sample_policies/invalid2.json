@@ -1,0 +1,34 @@
+{
+    "Ve123542d3rsion": "2012-10-17",
+    "Stateme12343werasdwe54qnt": [
+        {
+            "Sid2c3r": "AllowListAndReadSpecificBucket",
+            "Effect": "Allow",
+            "Ac23rction": [
+                "s3:ListBucket",
+                "s3:GetObject",
+                "s3:GetObjectVersion"
+            ],
+            "Resource": [
+                "arn:aws:s3:::my-production-data-bucket",
+                "arn:aws:s3:::my-production-data-bucket/*"
+            ],
+            "Condition": {
+                "Bool": {
+                    "aws:MultiFactorAuthPresent": "true"
+                }
+            }
+        },
+        {
+            "Sid": "ExplicitDenyWithoutMFA",
+            "Effect": "Deny",
+            "Action": "s3:*",
+            "Resource": "arn:aws:s3:::my-production-data-bucket/*",
+            "Condition": {
+                "BoolIfExists": {
+                    "aws:MultiFactorAuthPresent": "false"
+                }
+            }
+        }
+    ]
+}
