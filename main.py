@@ -5,6 +5,7 @@ from rich.console import Console
 
 from agent.orchestrator import Orchestrator
 from utils.file_io import PolicyInputError, load_policy, save_output
+from utils.gemini import GeminiError
 
 
 app = typer.Typer(add_completion=False)
@@ -31,7 +32,12 @@ def analyze(
         console.print(f"[bold red]Input validation failed:[/bold red] {exc}")
         raise typer.Exit(code=1) from exc
 
-    result = Orchestrator(verbose=verbose).run(policy_data)
+    try:
+        result = Orchestrator(verbose=verbose).run(policy_data)
+    except GeminiError as exc:
+        console.print(f"[bold red]Gemini request failed:[/bold red] {exc}")
+        raise typer.Exit(code=1) from exc
+
     saved_paths = save_output(result, output_dir, source_path=policy)
 
     console.print(result.summary_table())

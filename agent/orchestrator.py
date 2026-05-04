@@ -20,11 +20,10 @@ class Orchestrator:
     def __init__(
         self,
         verbose: bool = False,
-        max_iterations: int = 10,
-        prefer_live_model: bool = True,
+        max_iterations: int = 5,
         agent: Agent | None = None,
     ):
-        self.agent = agent or Agent(prefer_live_model=prefer_live_model)
+        self.agent = agent or Agent()
         self.verbose = verbose
         self.max_iterations = max_iterations
         self.console = Console()
@@ -60,7 +59,15 @@ class Orchestrator:
                     "Agent returned neither a tool call nor a final answer."
                 )
 
-            tool_name = str(response.tool_call["tool"])
+            tool_name_value = response.tool_call.get(
+                "tool_name"
+            ) or response.tool_call.get("tool")
+            if not isinstance(tool_name_value, str):
+                raise RuntimeError(
+                    "Agent returned a tool call without a valid tool name."
+                )
+
+            tool_name = tool_name_value
             tool_args = dict(response.tool_call.get("args", {}))
             if self.verbose:
                 display_args = {

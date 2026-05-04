@@ -5,6 +5,15 @@ from .file_io import (
     load_policy,
     save_output,
 )
+from .gemini import (
+    GeminiConfigurationError,
+    GeminiError,
+    GeminiResponseError,
+    build_generation_config,
+    create_gemini_client,
+    generate_json_response,
+    get_gemini_model_name,
+)
 from .validators import (
     contains_wildcard_token,
     has_condition,
@@ -21,9 +30,16 @@ from .validators import (
 )
 
 __all__ = [
+    "GeminiConfigurationError",
+    "GeminiError",
+    "GeminiResponseError",
     "IamPolicyValidationError",
     "JsonFormattingError",
     "PolicyInputError",
+    "build_generation_config",
+    "create_gemini_client",
+    "generate_json_response",
+    "get_gemini_model_name",
     "load_policy",
     "save_output",
     "contains_wildcard_token",

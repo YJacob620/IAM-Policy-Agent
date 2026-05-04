@@ -1,12 +1,10 @@
 # AWS IAM Policy Classifier and Remediator
 
-This project analyzes an AWS IAM policy JSON file, classifies it as `Strong` or `Weak`, and generates a remediated policy when the input is weak. The CLI uses a deterministic validation and analysis flow by default, and it can use Gemini for live agent and remediation calls when `GEMINI_API_KEY` is configured.
+This project analyzes an AWS IAM policy JSON file with an LLM model (Gemini), classifies it as `Strong` or `Weak`, and generates a remediated policy when the input is weak.
 
 ## What the program does
 
-- Performs a preflight sanity-check before any analysis starts.
-- Rejects malformed JSON files.
-- Rejects parsed JSON that does not match expected AWS IAM policy attributes.
+- Performs preflight sanity-checks on the input before any analysis starts.
 - Classifies the policy as `Strong` or `Weak`.
 - Writes a classification JSON for every valid policy.
 - Writes a remediated JSON only when the policy is classified as `Weak`.
@@ -26,13 +24,12 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-3. Create and configure an `.env` file if you want live model-backed analysis and remediation (Gemini).
+3. Create and configure an `.env` file for the Gemini API.
 
 ```env
 GEMINI_API_KEY=your_api_key_here
+GEMINI_MODEL=gemini-2.5-flash
 ```
-
-If `GEMINI_API_KEY` is not set, the program still runs using the built-in deterministic analysis and remediation flow.
 
 ## Run the CLI
 
@@ -54,20 +51,12 @@ Show the step-by-step tool flow:
 python main.py --policy tests/sample_policies/weak1.json --verbose
 ```
 
-## Input sanity-check behavior
+## Gemini runtime behavior
 
-The CLI validates the input in two stages before it starts the core policy analysis.
-
-1. General JSON formatting check.
-If the file is malformed JSON, the program exits immediately with a message that includes the parser failure and its line and column.
-
-2. AWS IAM schema and attribute check.
-If the JSON parses but does not use valid IAM policy attributes, the program exits immediately with a message describing the missing or unsupported IAM fields.
-
-Examples in the repository:
-
-- `tests/sample_policies/invalid1.json` fails the JSON formatting check.
-- `tests/sample_policies/invalid2.json` fails the IAM attribute sanity-check.
+- The agent decides which analysis tool to call next.
+- Tool observations are fed back into the model.
+- The model returns the final classification JSON.
+- If the classification is `Weak`, the remediation tool makes a separate Gemini call that returns the remediated policy JSON.
 
 ## Output files
 
@@ -123,14 +112,9 @@ Example shape:
 
 ## Run tests
 
-Run the full test suite:
+The LLM-facing tests use mocked Gemini clients - they do not require network access or a live API key.
+Run the tests:
 
 ```powershell
 python -m pytest -q
-```
-
-Run only the input-validation tests:
-
-```powershell
-python -m pytest tests/test_input_validation.py -q
 ```

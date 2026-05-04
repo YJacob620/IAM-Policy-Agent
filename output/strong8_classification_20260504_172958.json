@@ -1,0 +1,20 @@
+{
+    "policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": "sts:AssumeRole",
+                "Resource": "arn:aws:iam::123456789012:role/DeploymentRole",
+                "Condition": {
+                    "StringEquals": {
+                        "sts:ExternalId": "expected-external-id"
+                    }
+                }
+            }
+        ]
+    },
+    "classification": "Strong",
+    "reason": "The policy does not use wildcard actions, broad resources without conditions, NotAction, or the combination of Action '*' with Resource '*'.",
+    "findings": []
+}

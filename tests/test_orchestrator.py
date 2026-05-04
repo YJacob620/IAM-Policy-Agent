@@ -1,63 +1,63 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
-import pytest
-
+from agent.agent import AgentResponse
 from agent.orchestrator import Orchestrator
 
 
-FIXTURE_DIR = Path(__file__).parent / "sample_policies"
-WEAK_FIXTURES = [
-    "weak1.json",
-    "weak2.json",
-    "weak3.json",
-    "weak4.json",
-    "weak5.json",
-    "weak6.json",
-    "weak7.json",
-    "weak8.json",
-]
-STRONG_FIXTURES = [
-    "strong1.json",
-    "strong2.json",
-    "strong3.json",
-    "strong4.json",
-    "strong5.json",
-    "strong6.json",
-    "strong7.json",
-    "strong8.json",
-]
+class SequenceAgent:
+    def __init__(self, responses: list[AgentResponse]):
+        self._responses = iter(responses)
+        self.calls: list[list[dict[str, object]]] = []
+
+    def call(self, messages: list[dict[str, object]]) -> AgentResponse:
+        self.calls.append(list(messages))
+        return next(self._responses)
 
 
-def load_fixture(name: str) -> dict:
-    return json.loads((FIXTURE_DIR / name).read_text(encoding="utf-8"))
+def test_orchestrator_executes_llm_driven_tool_loop() -> None:
+    normalized_policy = {
+        "Version": "2012-10-17",
+        "Statement": [{"Effect": "Allow", "Action": "*", "Resource": "*"}],
+    }
+    sequence_agent = SequenceAgent(
+        [
+            AgentResponse(
+                thought="I need evidence from the wildcard tool before deciding.",
+                tool_call={
+                    "tool": "check_wildcards",
+                    "args": {"policy": normalized_policy},
+                },
+            ),
+            AgentResponse(
+                thought="The model has enough evidence to classify the policy.",
+                final_answer={
+                    "classification": "Weak",
+                    "reason": "The model found unrestricted wildcard access.",
+                    "findings": [
+                        "Statement 0 (Statement0): Action '*' uses a wildcard pattern (CRITICAL)"
+                    ],
+                    "remediated_policy": {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                                "Sid": "ScopedS3Read",
+                                "Effect": "Allow",
+                                "Action": ["s3:GetObject"],
+                                "Resource": "arn:aws:s3:::example-bucket/*",
+                            }
+                        ],
+                    },
+                    "changes": ["Replaced wildcard access with scoped S3 read access."],
+                    "reasoning": "The model reduced the permissions to a least-privilege example.",
+                },
+            ),
+        ]
+    )
 
-
-@pytest.mark.parametrize("fixture_name", STRONG_FIXTURES)
-def test_strong_fixtures_classify_strong(fixture_name: str) -> None:
-    result = Orchestrator(prefer_live_model=False).run(load_fixture(fixture_name))
-
-    assert result.classification == "Strong"
-    assert result.remediated_policy is None
-
-
-@pytest.mark.parametrize("fixture_name", WEAK_FIXTURES)
-def test_weak_fixtures_classify_weak_and_remediate(fixture_name: str) -> None:
-    result = Orchestrator(prefer_live_model=False).run(load_fixture(fixture_name))
+    result = Orchestrator(agent=sequence_agent).run({"policy": normalized_policy})
 
     assert result.classification == "Weak"
-    assert result.remediated_policy is not None
-    assert result.changes
-
-    statements = result.remediated_policy["Statement"]
-    if isinstance(statements, dict):
-        statements = [statements]
-
-    for statement in statements:
-        assert "NotAction" not in statement
-        actions = statement.get("Action", [])
-        if isinstance(actions, str):
-            actions = [actions]
-        assert all("*" not in action and "?" not in action for action in actions)
+    assert result.reason == "The model found unrestricted wildcard access."
+    assert result.changes == ["Replaced wildcard access with scoped S3 read access."]
+    assert len(sequence_agent.calls) == 2
+    assert sequence_agent.calls[1][-1]["role"] == "tool"
