@@ -1,0 +1,23 @@
+{
+    "policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": "ec2:*",
+                "Resource": "*",
+                "Condition": {
+                    "IpAddress": {
+                        "aws:SourceIp": "203.0.113.0/24"
+                    }
+                }
+            }
+        ]
+    },
+    "classification": "Weak",
+    "reason": "The policy uses a wildcard action (ec2:*) and unrestricted resource scope (*), which violates the principle of least privilege despite the IP condition.",
+    "findings": [
+        "Statement 0 (Statement0): Resource scope is broad: * (HIGH)",
+        "Statement 0 (Statement0): Action 'ec2:*' uses a wildcard pattern (HIGH)"
+    ]
+}

@@ -1,0 +1,48 @@
+{
+    "original_policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": "ec2:*",
+                "Resource": "*",
+                "Condition": {
+                    "IpAddress": {
+                        "aws:SourceIp": "203.0.113.0/24"
+                    }
+                }
+            }
+        ]
+    },
+    "remediated_policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "EC2ReadAndManageInstances",
+                "Effect": "Allow",
+                "Action": [
+                    "ec2:Describe*",
+                    "ec2:StartInstances",
+                    "ec2:StopInstances",
+                    "ec2:RebootInstances",
+                    "ec2:TerminateInstances"
+                ],
+                "Resource": "arn:aws:ec2:*:*:instance/*"
+            },
+            {
+                "Sid": "RestrictiveIPAccess",
+                "Effect": "Deny",
+                "NotAction": [
+                    "ec2:Describe*"
+                ],
+                "Resource": "*"
+            }
+        ]
+    },
+    "changes": [
+        "Replaced ec2:* wildcard with specific instance management actions.",
+        "Scoped Resource from '*' to 'arn:aws:ec2:*:*:instance/*' to limit impact to EC2 instances.",
+        "Removed the source IP condition from the Allow statement to prevent potential lockout or bypass, moving toward a more standard IAM structure."
+    ],
+    "reasoning": "The original policy granted full administrative control over the entire EC2 service, which violates the principle of least privilege. By restricting actions to specific instance management tasks and scoping the resource to instances, we significantly reduce the blast radius. The use of a broad wildcard '*' for resources is dangerous as it allows actions that do not support resource-level permissions to affect all resources in the account."
+}

@@ -1,3 +1,5 @@
+"""Pydantic models for the supported AWS IAM policy schema."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -19,6 +21,8 @@ def _ensure_string_list(value: Any) -> Any:
 
 
 class StatementModel(BaseModel):
+    """Strict subset of IAM statement fields accepted by this project."""
+
     model_config = ConfigDict(extra="forbid")
 
     Sid: str | None = None
@@ -36,6 +40,13 @@ class StatementModel(BaseModel):
     def validate_string_list_like(cls, value: Any) -> Any:
         return _ensure_string_list(value)
 
+    @field_validator("Condition", mode="before")
+    @classmethod
+    def validate_condition(cls, value: Any) -> Any:
+        if value is None or isinstance(value, dict):
+            return value
+        return None
+
     @model_validator(mode="after")
     def validate_action_shape(self) -> "StatementModel":
         if self.Action is None and self.NotAction is None:
@@ -44,6 +55,8 @@ class StatementModel(BaseModel):
 
 
 class PolicyModel(BaseModel):
+    """Validated top-level IAM policy document used by the runtime."""
+
     model_config = ConfigDict(extra="forbid")
 
     Id: str | None = None

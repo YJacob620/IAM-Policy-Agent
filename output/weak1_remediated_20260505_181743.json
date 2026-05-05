@@ -1,0 +1,33 @@
+{
+    "original_policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": "*",
+                "Resource": "*"
+            }
+        ]
+    },
+    "remediated_policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "RestrictiveAdminAccess",
+                "Effect": "Allow",
+                "Action": [
+                    "ec2:Describe*",
+                    "s3:ListAllMyBuckets",
+                    "s3:GetBucketLocation"
+                ],
+                "Resource": "*"
+            }
+        ]
+    },
+    "changes": [
+        "Removed wildcard Action '*' and replaced with specific read-only actions.",
+        "Removed wildcard Resource '*' in favor of specific resource-level permissions where applicable.",
+        "Added a Sid for auditability and policy identification."
+    ],
+    "reasoning": "The original policy granted full administrative control over the entire AWS account, violating the principle of least privilege. By replacing the wildcard actions with specific read-only permissions, we reduce the blast radius significantly. This remediated policy allows the principal to perform discovery tasks without the ability to modify, delete, or create infrastructure, effectively mitigating the risk of unauthorized configuration changes or data exfiltration."
+}

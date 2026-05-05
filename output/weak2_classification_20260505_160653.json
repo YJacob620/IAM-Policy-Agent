@@ -1,0 +1,19 @@
+{
+    "policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": "s3:*",
+                "Resource": "*"
+            }
+        ]
+    },
+    "classification": "Weak",
+    "reason": "The policy uses wildcard actions (s3:*) and unrestricted resources (*), lacking compensating conditions, which are material least-privilege issues.",
+    "findings": [
+        "Statement 0 (Statement0): This permissive Allow statement lacks compensating conditions such as MFA, source IP, or resource tags. (HIGH)",
+        "Statement 0 (Statement0): Resource scope is broad: * (HIGH)",
+        "Statement 0 (Statement0): Action 's3:*' uses a wildcard pattern (HIGH)"
+    ]
+}

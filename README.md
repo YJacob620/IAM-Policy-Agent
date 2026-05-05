@@ -1,13 +1,6 @@
 # AWS IAM Policy Classifier and Remediator
 
-This project analyzes an AWS IAM policy JSON file with an LLM model (Gemini), classifies it as `Strong` or `Weak`, and generates a remediated policy when the input is weak.
-
-## What the program does
-
-- Performs preflight sanity-checks on the input before any analysis starts.
-- Classifies the policy as `Strong` or `Weak`.
-- Writes a classification JSON for every valid policy.
-- Writes a remediated JSON only when the policy is classified as `Weak`.
+This project analyzes AWS IAM policy JSON files with Gemini, classifies policies as Strong or Weak, and remediates weak policies.
 
 ## Setup (Windows)
 
@@ -24,96 +17,64 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-3. Create and configure an `.env` file for the Gemini API.
+3. Create a .env file.
 
 ```env
 GEMINI_API_KEY=your_api_key_here
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-flash-lite-latest          # or another model if desired
 ```
 
-## Run the CLI
+## Commands
 
-Analyze a policy and write outputs into the default `output` directory:
+### Normal workflow
 
 ```powershell
-python main.py --policy tests/sample_policies/weak1.json
+python main.py analyze --policy tests/sample_policies/weak1.json
 ```
 
-Choose a custom output directory:
+Optional flags:
 
 ```powershell
-python main.py --policy tests/sample_policies/strong1.json --output-dir custom-output
+python main.py analyze --policy tests/sample_policies/weak1.json --output-dir output --verbose
 ```
 
-Show the step-by-step tool flow:
+### Remediation-only recovery mode
+
+Use this when classification already succeeded but remediation failed, and you want to retry only the second Gemini call using a prebuilt prompt file.
 
 ```powershell
-python main.py --policy tests/sample_policies/weak1.json --verbose
+python main.py remediate-from-prompt --policy tests/sample_policies/weak1.json --prompt-file remediation_prompt.txt
 ```
 
-## Gemini runtime behavior
+Optional flags:
 
-- The agent decides which analysis tool to call next.
-- Tool observations are fed back into the model.
-- The model returns the final classification JSON.
-- If the classification is `Weak`, the remediation tool makes a separate Gemini call that returns the remediated policy JSON.
+```powershell
+python main.py remediate-from-prompt --policy tests/sample_policies/weak1.json --prompt-file remediation_prompt.txt --output-dir output --verbose
+```
+
+## Runtime behavior
+
+Normal analyze flow:
+
+1. Validate and normalize input policy.
+2. Run all deterministic analysis tools at once.
+3. Send policy plus tool output to the classifier agent.
+4. Save the classification artifact.
+5. If classification is Weak, call remediation and save a remediated artifact.
+
+Recovery flow:
+
+1. Validate and normalize input policy.
+2. Read full remediation prompt contents from the provided txt file.
+3. Run remediation only (classification is skipped).
+4. Save only the remediated artifact.
 
 ## Output files
 
-For a valid input policy, the CLI writes files under the selected output directory.
-
-- `*_classification_*.json` is always written.
-- `*_remediated_*.json` is written only when the policy is classified as `Weak`.
-
-### Classification output fields
-
-The classification JSON contains these key attributes:
-
-- `classification`: The final verdict. `Strong` means no high-risk weaknesses were found. `Weak` means the tool found material IAM issues that violate least-privilege expectations.
-- `reason`: A short human-readable summary of why the policy received that verdict.
-- `findings`: A list of the concrete issues that drove the verdict. Each item identifies the statement, the weakness, and its severity.
-
-Example shape:
-
-```json
-{
-    "policy": { "...": "..." },
-    "classification": "Weak",
-    "reason": "This policy grants administrator-equivalent or otherwise overly broad Allow permissions.",
-    "findings": [
-        "Statement 0 (Statement0): Action '*' uses a wildcard pattern (CRITICAL)",
-        "Statement 0 (Statement0): Resource scope is broad: * (HIGH)"
-    ]
-}
-```
-
-### Remediated output fields
-
-When a policy is weak, the remediation JSON adds these key attributes:
-
-- `changes`: A list of the edits the remediator made to tighten the policy. This is intended to be a concise change log.
-- `reasoning`: A paragraph that explains the security rationale behind those edits and why they reduce risk.
-
-The remediation JSON also includes `original_policy` and `remediated_policy` so you can compare the before and after documents directly.
-
-Example shape:
-
-```json
-{
-    "original_policy": { "...": "..." },
-    "remediated_policy": { "...": "..." },
-    "changes": [
-        "Statement 0: replaced wildcard or inverted access logic with explicit S3 actions.",
-        "Statement 0: scoped resources to example ARN patterns that should be replaced with real resource identifiers."
-    ],
-    "reasoning": "The original policy included overly broad Allow permissions that exceeded least-privilege expectations."
-}
-```
+- *_classification_*.json: always written by analyze mode.
+- *_remediated_*.json: written after remediation runs successfully.
 
 ## Run tests
-
-The LLM-facing tests use mocked Gemini clients - they do not require network access or a live API key.
-Run the tests:
 
 ```powershell
 python -m pytest -q

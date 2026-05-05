@@ -1,0 +1,18 @@
+{
+    "policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "s3:GetObject",
+                    "s3:PutObject"
+                ],
+                "Resource": "arn:aws:s3:::my-secure-bucket/*"
+            }
+        ]
+    },
+    "classification": "Strong",
+    "reason": "The policy follows the principle of least privilege by restricting actions to specific S3 operations on a defined resource, and no security risks were identified.",
+    "findings": []
+}

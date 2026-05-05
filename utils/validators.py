@@ -1,3 +1,5 @@
+"""Validation and predicate helpers for IAM policy analysis."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -26,6 +28,8 @@ RESOURCE_TYPE_TOKENS = {
 
 
 def unwrap_policy_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Accept either a bare policy object or a wrapper containing ``policy``."""
+
     if not isinstance(payload, dict):
         raise TypeError("Policy payload must be a JSON object.")
 
@@ -36,11 +40,15 @@ def unwrap_policy_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def validate_policy_document(policy: dict[str, Any]) -> dict[str, Any]:
+    """Validate a policy against the supported IAM schema and normalize it."""
+
     validated = PolicyModel.model_validate(policy)
     return validated.model_dump(exclude_none=True)
 
 
 def normalize_to_list(value: Any) -> list[Any]:
+    """Normalize IAM scalar-or-list fields into a list for iteration."""
+
     if value is None:
         return []
     if isinstance(value, list):
@@ -66,10 +74,18 @@ def contains_wildcard_token(value: Any) -> bool:
 
 
 def is_action_wildcard(action: Any) -> bool:
+    """Return ``True`` when an action value contains wildcard expansion."""
+
     return isinstance(action, str) and contains_wildcard_token(action)
 
 
 def is_resource_broad(resource: Any) -> bool:
+    """Heuristically identify materially broad resource scopes.
+
+    The rule is intentionally narrower than a raw ``*`` substring check so that
+    anchored object-level ARNs such as bucket object paths can remain valid.
+    """
+
     if not isinstance(resource, str):
         return False
     if resource == "*":
@@ -130,6 +146,8 @@ def infer_services_from_statement(statement: dict[str, Any]) -> set[str]:
 
 
 def needs_condition_review(statement: dict[str, Any]) -> bool:
+    """Return ``True`` when an Allow statement needs compensating controls."""
+
     if not is_allow_statement(statement) or has_condition(statement):
         return False
 

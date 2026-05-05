@@ -15,6 +15,6 @@
         ]
     },
     "classification": "Strong",
-    "reason": "The policy does not use wildcard actions, broad resources without conditions, NotAction, or the combination of Action '*' with Resource '*'.",
+    "reason": "The policy follows the principle of least privilege by restricting sts:AssumeRole to a specific resource and enforcing an ExternalID condition for cross-account security.",
     "findings": []
 }

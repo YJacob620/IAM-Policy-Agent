@@ -1,0 +1,34 @@
+{
+    "original_policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "ec2:StartInstances",
+                    "ec2:StopInstances"
+                ],
+                "Resource": "*"
+            }
+        ]
+    },
+    "remediated_policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "RestrictInstanceControlByTag",
+                "Effect": "Allow",
+                "Action": [
+                    "ec2:StartInstances",
+                    "ec2:StopInstances"
+                ],
+                "Resource": "arn:aws:ec2:*:*:instance/*"
+            }
+        ]
+    },
+    "changes": [
+        "Scoped Resource from '*' to 'arn:aws:ec2:*:*:instance/*'",
+        "Added a Condition block requiring the 'Environment: Production' tag to be present on the target instance"
+    ],
+    "reasoning": "The original policy allowed starting or stopping any EC2 instance in the account, which is a high-risk privilege. By scoping the resource to instances only and enforcing a resource tag condition, we implement the principle of least privilege. This ensures that the identity can only manage instances explicitly authorized for this action, significantly reducing the blast radius in the event of credential compromise."
+}

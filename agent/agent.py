@@ -1,80 +1,137 @@
+"""Gemini-backed agents for classification and remediation."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
-from agent.prompts import build_system_prompt, format_for_gemini
-from tools.registry import TOOL_SCHEMAS
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from agent.prompts import (
+    CLASSIFICATION_RESPONSE_JSON_SCHEMA,
+    REMEDIATION_RESPONSE_JSON_SCHEMA,
+    build_classification_prompt,
+    build_classification_system_instruction,
+    build_remediation_prompt,
+    build_remediation_system_instruction,
+)
 from utils.gemini import (
-    GeminiResponseError,
     create_gemini_client,
     generate_json_response,
     get_gemini_model_name,
 )
+from utils.validators import validate_policy_document
 
 
-@dataclass(slots=True)
-class AgentResponse:
-    thought: str | None = None
-    tool_call: dict[str, Any] | None = None
-    final_answer: dict[str, Any] | None = None
+class ClassificationPayload(BaseModel):
+    """Schema returned by the classification agent."""
 
-    @property
-    def is_tool_call(self) -> bool:
-        return self.tool_call is not None
+    model_config = ConfigDict(extra="forbid")
 
-    @property
-    def is_final_answer(self) -> bool:
-        return self.final_answer is not None
+    classification: Literal["Weak", "Strong"]
+    reason: str = Field(..., min_length=1)
+
+    @field_validator("reason")
+    @classmethod
+    def normalize_reason(cls, value: str) -> str:
+        return value.strip()
 
 
-class Agent:
+class RemediationPayload(BaseModel):
+    """Schema returned by the remediation agent."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    remediated_policy: dict[str, Any]
+    changes: list[str] = Field(default_factory=list, min_length=1)
+    reasoning: str = Field(..., min_length=1)
+
+    @field_validator("changes")
+    @classmethod
+    def normalize_changes(cls, value: list[str]) -> list[str]:
+        cleaned = [
+            item.strip() for item in value if isinstance(item, str) and item.strip()
+        ]
+        if not cleaned:
+            raise ValueError("changes must contain at least one non-empty item.")
+        return cleaned
+
+    @field_validator("reasoning")
+    @classmethod
+    def normalize_reasoning(cls, value: str) -> str:
+        return value.strip()
+
+
+class ClassifyingAgent:
+    """Classify IAM policies using deterministic tool evidence."""
+
     def __init__(self, client: Any | None = None, model: str | None = None):
-        self.system_prompt = build_system_prompt(TOOL_SCHEMAS)
-        self.tool_names = {schema["name"] for schema in TOOL_SCHEMAS}
         self.client = client or create_gemini_client()
         self.model = get_gemini_model_name(model)
+        self.system_instruction = build_classification_system_instruction()
 
-    def call(self, messages: list[dict[str, Any]]) -> AgentResponse:
-        prompt = format_for_gemini(messages)
+    def classify(
+        self,
+        policy: dict[str, Any],
+        analysis_results: dict[str, dict[str, Any]],
+    ) -> dict[str, str]:
         payload = generate_json_response(
             self.client,
             model=self.model,
-            contents=prompt,
-            system_instruction=self.system_prompt,
+            contents=build_classification_prompt(policy, analysis_results),
+            system_instruction=self.system_instruction,
             temperature=0.1,
-            max_output_tokens=2048,
+            max_output_tokens=5000,
+            response_json_schema=CLASSIFICATION_RESPONSE_JSON_SCHEMA,
+        )
+        parsed = ClassificationPayload.model_validate(payload)
+        return {
+            "classification": parsed.classification,
+            "reason": parsed.reason,
+        }
+
+
+class RemediatingAgent:
+    """Generate remediated IAM policies for weak classifications."""
+
+    def __init__(self, client: Any | None = None, model: str | None = None):
+        self.client = client or create_gemini_client()
+        self.model = get_gemini_model_name(model)
+        self.system_instruction = build_remediation_system_instruction()
+
+    def _run_remediation_request(self, contents: str) -> dict[str, Any]:
+        if not isinstance(contents, str) or not contents.strip():
+            raise ValueError("Remediation prompt contents must be a non-empty string.")
+
+        payload = generate_json_response(
+            self.client,
+            model=self.model,
+            contents=contents,
+            system_instruction=self.system_instruction,
+            temperature=0.3,
+            max_output_tokens=20000,
+            response_json_schema=REMEDIATION_RESPONSE_JSON_SCHEMA,
+        )
+        parsed = RemediationPayload.model_validate(payload)
+        validated_policy = validate_policy_document(parsed.remediated_policy)
+        return {
+            "remediated_policy": validated_policy,
+            "changes": parsed.changes,
+            "reasoning": parsed.reasoning,
+        }
+
+    def remediate(
+        self,
+        policy: dict[str, Any],
+        relevant_analysis_results: dict[str, dict[str, Any]],
+    ) -> dict[str, Any]:
+        return self._run_remediation_request(
+            build_remediation_prompt(
+                policy,
+                relevant_analysis_results,
+            )
         )
 
-        if "final_answer" in payload:
-            final_answer = payload["final_answer"]
-            if not isinstance(final_answer, dict):
-                raise GeminiResponseError(
-                    "Gemini returned a non-object final_answer payload."
-                )
-            return AgentResponse(
-                thought=payload.get("thought"),
-                final_answer=final_answer,
-            )
+    def remediate_from_contents(self, contents: str) -> dict[str, Any]:
+        """Run remediation from a fully prepared prompt loaded from disk."""
 
-        tool_call_payload = payload.get("tool_call")
-        if not isinstance(tool_call_payload, dict):
-            tool_call_payload = {
-                "tool_name": payload.get("tool"),
-                "args": payload.get("args", {}),
-            }
-
-        tool_name = tool_call_payload.get("tool_name") or tool_call_payload.get("tool")
-        if not isinstance(tool_name, str) or tool_name not in self.tool_names:
-            raise GeminiResponseError(
-                f"Gemini returned an unknown or invalid tool name: {tool_name!r}."
-            )
-
-        args = tool_call_payload.get("args", {})
-        if not isinstance(args, dict):
-            raise GeminiResponseError("Gemini returned non-object tool arguments.")
-
-        return AgentResponse(
-            thought=payload.get("thought"),
-            tool_call={"tool_name": tool_name, "args": args},
-        )
+        return self._run_remediation_request(contents)

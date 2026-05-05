@@ -1,3 +1,5 @@
+"""Output schema for classification and remediation artifacts."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -7,6 +9,8 @@ from rich.table import Table
 
 
 class OutputModel(BaseModel):
+    """Canonical result object returned by the orchestrator."""
+
     policy: dict[str, Any]
     classification: str
     reason: str
@@ -16,6 +20,8 @@ class OutputModel(BaseModel):
     reasoning: str | None = None
 
     def to_classification_dict(self) -> dict[str, Any]:
+        """Return the always-saved classification artifact payload."""
+
         return {
             "policy": self.policy,
             "classification": self.classification,
@@ -24,6 +30,8 @@ class OutputModel(BaseModel):
         }
 
     def to_remediated_dict(self) -> dict[str, Any]:
+        """Return the optional remediation artifact payload."""
+
         return {
             "original_policy": self.policy,
             "remediated_policy": self.remediated_policy,
@@ -32,6 +40,8 @@ class OutputModel(BaseModel):
         }
 
     def summary_table(self) -> Table:
+        """Build the Rich summary table shown by the CLI."""
+
         table = Table(title="AWS IAM Policy Classification")
         table.add_column("Field", style="cyan", no_wrap=True)
         table.add_column("Value", style="white")

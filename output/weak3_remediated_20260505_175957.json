@@ -1,0 +1,33 @@
+{
+    "original_policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": "*:Get*",
+                "Resource": "*"
+            }
+        ]
+    },
+    "remediated_policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "RestrictiveGetAccess",
+                "Effect": "Allow",
+                "Action": [
+                    "s3:Get*",
+                    "ec2:Describe*",
+                    "iam:Get*"
+                ],
+                "Resource": "*"
+            }
+        ]
+    },
+    "changes": [
+        "Replaced the broad wildcard action '*:Get*' with specific service-level actions.",
+        "Added explicit action prefixes to limit scope to common read-only operations.",
+        "Added a Sid (Statement ID) for better auditability and policy management."
+    ],
+    "reasoning": "The original policy used '*:Get*', which grants read access across every service in the AWS account, violating the principle of least privilege. By replacing this with specific service actions (e.g., s3:Get*, ec2:Describe*), we reduce the attack surface. While resource-level restrictions are recommended, many 'Get' actions are account-wide or global, making '*' necessary for those specific operations; however, narrowing the action scope prevents unauthorized access to services that were not intended to be exposed."
+}

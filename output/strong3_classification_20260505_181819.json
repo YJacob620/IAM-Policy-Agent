@@ -1,0 +1,20 @@
+{
+    "policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Deny",
+                "Action": "*",
+                "Resource": "*",
+                "Condition": {
+                    "BoolIfExists": {
+                        "aws:MultiFactorAuthPresent": "false"
+                    }
+                }
+            }
+        ]
+    },
+    "classification": "Strong",
+    "reason": "The policy implements a mandatory MFA enforcement pattern using a Deny statement, which is a security best practice and contains no overly permissive Allow statements.",
+    "findings": []
+}

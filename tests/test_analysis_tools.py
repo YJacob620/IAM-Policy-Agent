@@ -59,4 +59,4 @@ def test_check_conditions_flags_broad_allow_without_condition() -> None:
 def test_check_conditions_ignores_constrained_policy() -> None:
     result = check_conditions(load_fixture("strong1.json"))
 
-    assert result["missing_conditions"] is False
+    assert result is None

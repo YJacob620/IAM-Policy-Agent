@@ -1,0 +1,17 @@
+{
+    "policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": "sts:AssumeRole",
+                "Resource": "arn:aws:iam::123456789012:role/DeploymentRole"
+            }
+        ]
+    },
+    "classification": "Weak",
+    "reason": "The policy allows sts:AssumeRole without any contextual security conditions such as MFA or source IP restrictions, violating the principle of least privilege.",
+    "findings": [
+        "Statement 0 (Statement0): This permissive Allow statement lacks compensating conditions such as MFA, source IP, or resource tags. (HIGH)"
+    ]
+}

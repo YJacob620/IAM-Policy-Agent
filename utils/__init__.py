@@ -3,6 +3,8 @@ from .file_io import (
     JsonFormattingError,
     PolicyInputError,
     load_policy,
+    save_classification_output,
+    save_remediation_output,
     save_output,
 )
 from .gemini import (
@@ -41,6 +43,8 @@ __all__ = [
     "generate_json_response",
     "get_gemini_model_name",
     "load_policy",
+    "save_classification_output",
+    "save_remediation_output",
     "save_output",
     "contains_wildcard_token",
     "has_condition",

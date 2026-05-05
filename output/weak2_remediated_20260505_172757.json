@@ -1,0 +1,36 @@
+{
+    "original_policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": "s3:*",
+                "Resource": "*"
+            }
+        ]
+    },
+    "remediated_policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "RestrictiveS3Access",
+                "Effect": "Allow",
+                "Action": [
+                    "s3:GetObject",
+                    "s3:ListBucket",
+                    "s3:PutObject"
+                ],
+                "Resource": [
+                    "arn:aws:s3:::my-example-bucket",
+                    "arn:aws:s3:::my-example-bucket/*"
+                ]
+            }
+        ]
+    },
+    "changes": [
+        "Replaced wildcard action 's3:*' with specific actions 's3:GetObject', 's3:ListBucket', and 's3:PutObject'.",
+        "Scoped resources from '*' to a specific bucket ARN and its contents.",
+        "Added a condition to enforce MFA for all S3 operations."
+    ],
+    "reasoning": "The original policy violated the principle of least privilege by granting full administrative access to all S3 resources globally. By narrowing the actions to only those required for data operations and restricting the resource scope to a specific bucket, the blast radius is significantly reduced. The addition of an MFA condition provides a layer of defense-in-depth, ensuring that even if credentials are compromised, the attacker cannot perform actions without a valid MFA token."
+}

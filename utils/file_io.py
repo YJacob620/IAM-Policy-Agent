@@ -1,3 +1,5 @@
+"""File loading and persistence helpers for policy input and output artifacts."""
+
 from __future__ import annotations
 
 import json
@@ -68,6 +70,8 @@ def _format_validation_error(exc: ValidationError) -> str:
 
 
 def load_json(path: str | Path) -> dict[str, Any]:
+    """Read a JSON object from disk and raise friendly formatting errors."""
+
     file_path = Path(path)
     try:
         return json.loads(file_path.read_text(encoding="utf-8"))
@@ -80,10 +84,14 @@ def load_json(path: str | Path) -> dict[str, Any]:
 
 
 def load_policy(path: str | Path) -> dict[str, Any]:
+    """Load, unwrap, and validate an IAM policy file before orchestration."""
+
     file_path = Path(path)
     raw = load_json(file_path)
     try:
-        return validate_policy_document(unwrap_policy_payload(raw))
+        unwrpd = unwrap_policy_payload(raw)
+        vldtd = validate_policy_document(unwrpd)
+        return vldtd
     except ValidationError as exc:
         raise IamPolicyValidationError(
             f"Invalid AWS IAM policy in '{file_path}': {_format_validation_error(exc)}"
@@ -95,31 +103,72 @@ def load_policy(path: str | Path) -> dict[str, Any]:
 
 
 def save_json(path: str | Path, payload: dict[str, Any]) -> Path:
+    """Persist a JSON payload with stable indentation and a trailing newline."""
+
     output_path = Path(path)
     output_path.write_text(json.dumps(payload, indent=4) + "\n", encoding="utf-8")
     return output_path
 
 
-def save_output(
-    result: OutputModel, output_dir: str | Path, source_path: str | Path
-) -> dict[str, Path | None]:
+def save_classification_output(
+    result: OutputModel,
+    output_dir: str | Path,
+    source_path: str | Path,
+    timestamp: str | None = None,
+) -> Path:
+    """Persist the always-generated classification artifact."""
+
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
     stem = Path(source_path).stem
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-    classification_path = save_json(
-        output_path / f"{stem}_classification_{timestamp}.json",
+    artifact_timestamp = timestamp or datetime.now().strftime("%Y%m%d_%H%M%S")
+    return save_json(
+        output_path / f"{stem}_classification_{artifact_timestamp}.json",
         result.to_classification_dict(),
     )
 
-    remediated_path: Path | None = None
-    if result.classification.lower() == "weak" and result.remediated_policy is not None:
-        remediated_path = save_json(
-            output_path / f"{stem}_remediated_{timestamp}.json",
-            result.to_remediated_dict(),
-        )
+
+def save_remediation_output(
+    result: OutputModel,
+    output_dir: str | Path,
+    source_path: str | Path,
+    timestamp: str | None = None,
+) -> Path | None:
+    """Persist the remediation artifact when classification is weak."""
+
+    if result.classification.lower() != "weak" or result.remediated_policy is None:
+        return None
+
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    stem = Path(source_path).stem
+    artifact_timestamp = timestamp or datetime.now().strftime("%Y%m%d_%H%M%S")
+    return save_json(
+        output_path / f"{stem}_remediated_{artifact_timestamp}.json",
+        result.to_remediated_dict(),
+    )
+
+
+def save_output(
+    result: OutputModel, output_dir: str | Path, source_path: str | Path
+) -> dict[str, Path | None]:
+    """Write the classification artifact and, when needed, the remediation artifact."""
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    classification_path = save_classification_output(
+        result,
+        output_dir,
+        source_path,
+        timestamp=timestamp,
+    )
+    remediated_path = save_remediation_output(
+        result,
+        output_dir,
+        source_path,
+        timestamp=timestamp,
+    )
 
     return {
         "classification_path": classification_path,

@@ -1,0 +1,23 @@
+{
+    "policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Deny",
+                "Action": "s3:*",
+                "Resource": [
+                    "arn:aws:s3:::my-secure-bucket",
+                    "arn:aws:s3:::my-secure-bucket/*"
+                ],
+                "Condition": {
+                    "Bool": {
+                        "aws:SecureTransport": "false"
+                    }
+                }
+            }
+        ]
+    },
+    "classification": "Strong",
+    "reason": "The policy implements a restrictive Deny statement to enforce secure transport for a specific resource, following security best practices without granting overly permissive access.",
+    "findings": []
+}

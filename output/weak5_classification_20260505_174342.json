@@ -1,0 +1,21 @@
+{
+    "policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "ec2:StartInstances",
+                    "ec2:StopInstances"
+                ],
+                "Resource": "*"
+            }
+        ]
+    },
+    "classification": "Weak",
+    "reason": "The policy uses an unrestricted resource wildcard (*) for sensitive EC2 instance control actions without any compensating conditions.",
+    "findings": [
+        "Statement 0 (Statement0): This permissive Allow statement lacks compensating conditions such as MFA, source IP, or resource tags. (HIGH)",
+        "Statement 0 (Statement0): Resource scope is broad: * (HIGH)"
+    ]
+}

@@ -1,0 +1,20 @@
+{
+    "policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": "*",
+                "Resource": "*"
+            }
+        ]
+    },
+    "classification": "Weak",
+    "reason": "The policy grants full administrative access via Action:* and Resource:*, violating the principle of least privilege and creating a critical security risk.",
+    "findings": [
+        "Statement 0 (Statement0): This permissive Allow statement lacks compensating conditions such as MFA, source IP, or resource tags. (CRITICAL)",
+        "Statement 0 (Statement0): Effect:Allow combined with Action:* and Resource:* is administrator-equivalent access. (CRITICAL)",
+        "Statement 0 (Statement0): Resource scope is broad: * (HIGH)",
+        "Statement 0 (Statement0): Action '*' uses a wildcard pattern (CRITICAL)"
+    ]
+}
